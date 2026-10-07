@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Official Firebase Admin SDK: handles OAuth2 for FCM HTTP v1 + topic messaging.
+         (The legacy "server key" FCM API is deprecated — this is the current path.) -->
+    <PackageReference Include="FirebaseAdmin" Version="3.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ScoreCast.Contracts\ScoreCast.Contracts.csproj" />
+  </ItemGroup>
+</Project>

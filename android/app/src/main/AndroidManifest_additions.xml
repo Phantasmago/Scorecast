@@ -1,0 +1,54 @@
+<!--
+  These go into the Flutter project's android/app/src/main/AndroidManifest.xml.
+  Merge the permissions at the top level and the <receiver>/intent-filter blocks
+  inside <application>. The FCM service itself is registered automatically by the
+  firebase_messaging plugin — you don't declare it here.
+-->
+
+<!-- ===== top level, inside <manifest> ===== -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />          <!-- Android 13+ -->
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />        <!-- WorkManager constraint -->
+
+
+<!-- ===== inside <application> ===== -->
+
+<!-- Flutter's MainActivity: catch the widget's app://match/{id} deep link. -->
+<!-- Add this <intent-filter> to the EXISTING <activity android:name=".MainActivity">. -->
+<activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
+    <!-- (keep the default LAUNCHER intent-filter that flutter create generated) -->
+    <intent-filter android:autoVerify="false">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="app" android:host="match" />
+        <data android:scheme="app" android:host="tab" />
+    </intent-filter>
+</activity>
+
+<!-- The Glance widget host (from Step 4). -->
+<receiver
+    android:name=".ScoreCastWidgetReceiver"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/scorecast_widget_info" />
+</receiver>
+
+<!-- Restart adaptive sync after reboot. -->
+<receiver
+    android:name=".BootReceiver"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+    </intent-filter>
+</receiver>
+
+<!-- Optional: default FCM notification channel for notification-type messages. -->
+<meta-data
+    android:name="com.google.firebase.messaging.default_notification_channel_id"
+    android:value="scorecast_goals" />
