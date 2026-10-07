@@ -24,6 +24,7 @@ public interface IFcmPushService
 public sealed class FcmPushService : IFcmPushService
 {
     private readonly ILogger<FcmPushService> _log;
+    private readonly bool _enabled;
     private static readonly JsonSerializerOptions WireJson = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -34,21 +35,41 @@ public sealed class FcmPushService : IFcmPushService
     {
         _log = log;
 
-        // Initialize the Firebase app once from a service-account JSON.
-        // Path comes from config / env (GOOGLE_APPLICATION_CREDENTIALS also works).
-        if (FirebaseApp.DefaultInstance is null)
+        // Initialize Firebase from a service-account JSON. If it isn't present, we
+        // DON'T fall back to Application Default Credentials (that throws when ADC
+        // isn't configured and would crash startup). Instead FCM is disabled and
+        // pushes no-op — the REST API and sync loop still run. Add the JSON later
+        // and restart to enable pushes.
+        var credPath = cfg["Fcm:ServiceAccountPath"];
+        if (string.IsNullOrWhiteSpace(credPath) || !File.Exists(credPath))
         {
-            var credPath = cfg["Fcm:ServiceAccountPath"];
-            var credential = !string.IsNullOrWhiteSpace(credPath) && File.Exists(credPath)
-                ? GoogleCredential.FromFile(credPath)
-                : GoogleCredential.GetApplicationDefault();
+            _log.LogWarning(
+                "FCM disabled: no service-account JSON at '{Path}'. Pushes will no-op; REST API still serves.",
+                credPath ?? "(unset)");
+            _enabled = false;
+            return;
+        }
 
-            FirebaseApp.Create(new AppOptions { Credential = credential });
+        try
+        {
+            if (FirebaseApp.DefaultInstance is null)
+            {
+                FirebaseApp.Create(new AppOptions { Credential = GoogleCredential.FromFile(credPath) });
+            }
+            _enabled = true;
+            _log.LogInformation("FCM enabled from {Path}", credPath);
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "FCM init failed; disabling pushes.");
+            _enabled = false;
         }
     }
 
     public async Task PushAsync(ChangeEvent change, CancellationToken ct)
     {
+        if (!_enabled) return;   // no credentials -> silently skip; sync loop keeps running
+
         var m = change.Match;
 
         // Topics this match belongs to (max 5 in an FCM condition; we use up to 4).
